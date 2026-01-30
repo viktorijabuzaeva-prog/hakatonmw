@@ -743,9 +743,9 @@ if __name__ == '__main__':
     debug = os.getenv('FLASK_DEBUG', 'True').lower() == 'true'
     
     print(f"""
-╔═══════════════════════════════════════════════════════════╗
-║   UX Transcript Analysis System - Backend API            ║
-╚═══════════════════════════════════════════════════════════╝
+============================================================
+   UX Transcript Analysis System - Backend API            
+============================================================
 
 Server: http://{host}:{port}
 AI Provider: {AI_PROVIDER}

@@ -271,6 +271,18 @@ class AIAnalyzer:
             Dictionary with analysis results
         """
         try:
+            # Limit transcript size for Groq free tier (12000 TPM limit)
+            # ~5000 words = ~7500 tokens, leaving room for system prompt and response
+            MAX_WORDS = 5000
+            words = transcript_text.split()
+            if len(words) > MAX_WORDS:
+                transcript_text = ' '.join(words[:MAX_WORDS])
+                print(f"[AI] Transcript truncated from {len(words)} to {MAX_WORDS} words for API limits")
+            
+            # Also limit existing_insights to save tokens
+            if existing_insights and len(existing_insights) > 1000:
+                existing_insights = existing_insights[:1000] + "..."
+            
             prompt = self.build_analysis_prompt(
                 transcript_text,
                 respondent_name,
