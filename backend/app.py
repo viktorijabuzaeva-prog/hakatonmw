@@ -7,7 +7,7 @@ import sys
 import traceback
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
-from werkzeug.utils import secure_filename
+import re
 from dotenv import load_dotenv
 from datetime import datetime
 
@@ -123,8 +123,13 @@ def transcripts():
             }), 400
         
         try:
-            # Secure the filename
-            filename = secure_filename(file.filename)
+            # Secure the filename while preserving Cyrillic characters
+            original_filename = file.filename
+            # Remove path separators and dangerous characters, keep Cyrillic
+            filename = re.sub(r'[<>:"/\\|?*]', '', original_filename)
+            filename = filename.strip('. ')
+            if not filename:
+                filename = 'transcript.docx'
             
             # Save the file
             result = transcript_parser.save_transcript(file, filename)
