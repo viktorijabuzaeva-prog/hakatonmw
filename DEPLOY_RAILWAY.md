@@ -13,12 +13,12 @@
 3. Найдите репозиторий `hakatonmw` и выберите его
 4. Railway автоматически начнёт деплой
 
-## Шаг 3: Получение бесплатного API ключа Gemini
+## Шаг 3: Получение бесплатного API ключа Groq
 
-1. Перейдите на **https://aistudio.google.com/app/apikey**
-2. Войдите в Google аккаунт
+1. Перейдите на **https://console.groq.com/keys**
+2. Зарегистрируйтесь (можно через Google)
 3. Нажмите **Create API Key**
-4. Скопируйте ключ
+4. Скопируйте ключ (начинается с `gsk_...`)
 
 ## Шаг 4: Настройка переменных окружения
 
@@ -27,22 +27,29 @@
 3. Добавьте переменные:
 
 ```
-GEMINI_API_KEY=ваш-ключ-от-gemini
-AI_PROVIDER=gemini
-GEMINI_MODEL=gemini-1.5-flash
+GROQ_API_KEY=gsk_ваш-ключ-от-groq
+AI_PROVIDER=groq
+GROQ_MODEL=llama-3.3-70b-versatile
 SECRET_KEY=любая-случайная-строка
 ```
 
-### Альтернативные провайдеры (платные):
+### Альтернативные провайдеры:
 
-**OpenAI:**
+**Google Gemini (бесплатно, но не работает в России):**
+```
+GEMINI_API_KEY=ваш-ключ
+AI_PROVIDER=gemini
+GEMINI_MODEL=gemini-1.5-flash
+```
+
+**OpenAI (платно):**
 ```
 OPENAI_API_KEY=sk-ваш-ключ-от-openai
 AI_PROVIDER=openai
 OPENAI_MODEL=gpt-4o
 ```
 
-**Anthropic:**
+**Anthropic (платно):**
 ```
 ANTHROPIC_API_KEY=sk-ant-ваш-ключ
 AI_PROVIDER=anthropic

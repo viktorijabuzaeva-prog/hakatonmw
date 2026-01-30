@@ -16,6 +16,12 @@ try:
 except ImportError:
     GEMINI_AVAILABLE = False
 
+try:
+    from groq import Groq
+    GROQ_AVAILABLE = True
+except ImportError:
+    GROQ_AVAILABLE = False
+
 # Get the directory containing this script and load .env from there
 BACKEND_DIR = os.path.dirname(os.path.abspath(__file__))
 env_path = os.path.join(BACKEND_DIR, '.env')
@@ -102,6 +108,24 @@ class AIAnalyzer:
                         print(f"Gemini initialization error: {e}")
             else:
                 print("WARNING: GEMINI_API_KEY not found in environment!")
+        
+        elif provider == "groq":
+            self.api_key = os.getenv("GROQ_API_KEY")
+            self.groq_client = None
+            if self.api_key:
+                if not GROQ_AVAILABLE:
+                    print("WARNING: groq package not installed!")
+                    print("Install with: pip install groq")
+                else:
+                    try:
+                        self.groq_client = Groq(api_key=self.api_key)
+                        model_name = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
+                        print(f"Groq initialized with model: {model_name}")
+                    except Exception as e:
+                        print(f"Groq initialization error: {e}")
+            else:
+                print("WARNING: GROQ_API_KEY not found in environment!")
+                print("Get free key at: https://console.groq.com/keys")
     
     def build_analysis_prompt(
         self, 
@@ -326,6 +350,29 @@ class AIAnalyzer:
                 # Gemini doesn't return exact token count in free tier, estimate it
                 tokens_used = len(prompt.split()) + len(analysis_text.split())
                 model = os.getenv("GEMINI_MODEL", "gemini-1.5-flash")
+            
+            elif self.provider == "groq":
+                if not self.groq_client:
+                    return {
+                        'success': False,
+                        'error': 'Groq not initialized. Check GROQ_API_KEY in .env file. Get free key at: https://console.groq.com/keys',
+                        'respondent_name': respondent_name
+                    }
+                
+                model = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
+                
+                response = self.groq_client.chat.completions.create(
+                    model=model,
+                    messages=[
+                        {"role": "system", "content": UX_RESEARCHER_SYSTEM_PROMPT},
+                        {"role": "user", "content": prompt}
+                    ],
+                    temperature=0.7,
+                    max_tokens=4000
+                )
+                
+                analysis_text = response.choices[0].message.content
+                tokens_used = response.usage.total_tokens
             
             else:
                 return {

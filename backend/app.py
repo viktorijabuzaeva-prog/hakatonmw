@@ -35,9 +35,11 @@ CORS(app)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 TRANSCRIPTS_DIR = os.path.join(BASE_DIR, 'Transcripts')
 INSIGHTS_DIR = os.path.join(BASE_DIR, 'Insights')
-AI_PROVIDER = os.getenv('AI_PROVIDER', 'gemini')
+AI_PROVIDER = os.getenv('AI_PROVIDER', 'groq')
 # Model selection based on provider
-if AI_PROVIDER == 'gemini':
+if AI_PROVIDER == 'groq':
+    AI_MODEL = os.getenv('GROQ_MODEL', 'llama-3.3-70b-versatile')
+elif AI_PROVIDER == 'gemini':
     AI_MODEL = os.getenv('GEMINI_MODEL', 'gemini-1.5-flash')
 elif AI_PROVIDER == 'openai':
     AI_MODEL = os.getenv('OPENAI_MODEL', 'gpt-4o')
@@ -212,7 +214,7 @@ def analyze():
         current_count = stats['total_interviews'] + 1
         
         print(f"[ANALYZE] Starting AI analysis with model: {AI_MODEL}")
-        api_key_configured = os.getenv('GEMINI_API_KEY') or os.getenv('GOOGLE_API_KEY') or os.getenv('OPENAI_API_KEY') or os.getenv('ANTHROPIC_API_KEY')
+        api_key_configured = os.getenv('GROQ_API_KEY') or os.getenv('GEMINI_API_KEY') or os.getenv('GOOGLE_API_KEY') or os.getenv('OPENAI_API_KEY') or os.getenv('ANTHROPIC_API_KEY')
         print(f"[ANALYZE] API Key configured: {'Yes' if api_key_configured else 'NO!'}")
         
         # Analyze with AI
@@ -693,11 +695,11 @@ def internal_error(error):
 
 if __name__ == '__main__':
     # Check if API key is configured
-    has_api_key = os.getenv('GEMINI_API_KEY') or os.getenv('GOOGLE_API_KEY') or os.getenv('OPENAI_API_KEY') or os.getenv('ANTHROPIC_API_KEY')
+    has_api_key = os.getenv('GROQ_API_KEY') or os.getenv('GEMINI_API_KEY') or os.getenv('GOOGLE_API_KEY') or os.getenv('OPENAI_API_KEY') or os.getenv('ANTHROPIC_API_KEY')
     if not has_api_key:
         print("⚠️  WARNING: No API key configured!")
-        print("Please set GEMINI_API_KEY (free), OPENAI_API_KEY, or ANTHROPIC_API_KEY in .env file")
-        print("Get free Gemini key at: https://aistudio.google.com/app/apikey")
+        print("Please set GROQ_API_KEY (free, works in Russia) in .env file")
+        print("Get free Groq key at: https://console.groq.com/keys")
     
     # Get configuration
     host = os.getenv('HOST', '0.0.0.0')
