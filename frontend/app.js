@@ -280,7 +280,9 @@ function renderTranscriptsList() {
                     <div class="name">${typeLabel} ${item.name}</div>
                     <div class="transcript-actions">
                         ${analyzedBadge}
-                        ${item.type === 'transcript' ? `<button class="delete-btn" onclick="event.stopPropagation(); deleteTranscript('${item.name}')" title="Удалить">🗑</button>` : ''}
+                        ${item.type === 'transcript' 
+                            ? `<button class="delete-btn" onclick="event.stopPropagation(); deleteTranscript('${item.name}')" title="Удалить транскрипт">🗑</button>` 
+                            : `<button class="delete-btn" onclick="event.stopPropagation(); deleteReport('${item.name}')" title="Удалить отчёт">🗑</button>`}
                     </div>
                 </div>
                 <div class="meta">${sizeInfo}</div>
@@ -345,6 +347,62 @@ function selectReport(name) {
         
         // Switch to analysis tab
         switchTab('analysis');
+    }
+}
+
+// Delete a report
+async function deleteReport(name) {
+    if (!confirm(`Удалить отчёт "${name}"?`)) {
+        return;
+    }
+    
+    try {
+        // Find the report filename
+        const reportsResponse = await apiCall('/insights/reports');
+        if (!reportsResponse.success) {
+            showToast('Ошибка получения списка отчётов', 'error');
+            return;
+        }
+        
+        const report = reportsResponse.reports.find(r => 
+            r.respondent.replace(/-/g, ' ') === name || r.respondent === name
+        );
+        
+        if (!report) {
+            showToast('Отчёт не найден', 'error');
+            return;
+        }
+        
+        const response = await fetch(`${API_BASE_URL}/insights/reports/${encodeURIComponent(report.filename)}`, {
+            method: 'DELETE'
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showToast(`Отчёт "${name}" удалён`, 'success');
+            
+            // Remove from cache
+            delete state.analysisCache[name];
+            delete state.analysisCache[name.replace(/ /g, '-')];
+            
+            // Clear selection if deleted report was selected
+            if (state.selectedTranscript?.name === name) {
+                state.selectedTranscript = null;
+                state.currentAnalysis = null;
+                document.getElementById('analysisResult').innerHTML = '';
+            }
+            
+            // Re-render and reload statistics
+            renderTranscriptsList();
+            await loadStatistics();
+            updateStatistics();
+        } else {
+            showToast('Ошибка: ' + data.error, 'error');
+        }
+    } catch (error) {
+        console.error('Delete report error:', error);
+        showToast('Ошибка при удалении: ' + error.message, 'error');
     }
 }
 

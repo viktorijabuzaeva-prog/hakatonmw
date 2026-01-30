@@ -454,13 +454,32 @@ def list_reports():
         }), 500
 
 
-@app.route('/api/insights/reports/<filename>', methods=['GET'])
+@app.route('/api/insights/reports/<filename>', methods=['GET', 'DELETE'])
 def get_report(filename):
-    """Get a specific report by filename"""
+    """Get or delete a specific report by filename"""
+    report_path = os.path.join(insights_manager.reports_dir, filename)
+    
+    if request.method == 'DELETE':
+        try:
+            if os.path.exists(report_path):
+                os.remove(report_path)
+                return jsonify({
+                    'success': True,
+                    'message': f'Report "{filename}" deleted successfully'
+                })
+            else:
+                return jsonify({
+                    'success': False,
+                    'error': 'Report not found'
+                }), 404
+        except Exception as e:
+            return jsonify({
+                'success': False,
+                'error': str(e)
+            }), 500
+    
+    # GET method
     try:
-        import os
-        report_path = os.path.join(insights_manager.reports_dir, filename)
-        
         if os.path.exists(report_path):
             with open(report_path, 'r', encoding='utf-8') as f:
                 content = f.read()
