@@ -252,17 +252,17 @@ _Рекомендации будут сформированы на основе 
         """
         master_content = self.load_master_insights()
         
-        # Extract interview count
-        count_match = re.search(r'Всего проанализировано интервью: (\d+)', master_content)
-        interview_count = int(count_match.group(1)) if count_match else 0
+        # Count individual reports (only .md files, excluding .gitkeep)
+        report_files = [f for f in os.listdir(self.reports_dir) 
+                        if f.endswith('.md') and f != '.gitkeep']
+        report_count = len(report_files)
+        
+        # Use actual report count as the source of truth
+        interview_count = report_count
         
         # Extract last update date
         date_match = re.search(r'Последнее обновление: (.+)', master_content)
         last_update = date_match.group(1) if date_match else "не проводилось"
-        
-        # Count individual reports
-        report_files = [f for f in os.listdir(self.reports_dir) if f.endswith('.md')]
-        report_count = len(report_files)
         
         # Extract all tags
         all_tags = self.extract_tags_from_analysis(master_content)

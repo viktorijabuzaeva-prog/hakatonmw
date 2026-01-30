@@ -342,11 +342,11 @@ async function deleteTranscript(name) {
 function updateStatistics() {
     const stats = state.statistics;
     
-    // Total interviews in database (files)
-    const totalFiles = stats.total_transcript_files || state.transcripts.length || 0;
+    // Total transcripts loaded (actual files in Transcripts folder)
+    const totalFiles = state.transcripts.length || 0;
     document.getElementById('totalInterviews').textContent = totalFiles;
     
-    // Analyzed count (reports)
+    // Analyzed count (actual reports in Insights/reports folder)
     document.getElementById('analyzedCount').textContent = stats.report_count || 0;
 }
 
