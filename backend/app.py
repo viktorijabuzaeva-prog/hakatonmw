@@ -22,8 +22,9 @@ from transcript_parser import TranscriptParser
 from ai_analyzer import AIAnalyzer
 from insights_manager import InsightsManager
 
-# Initialize Flask app
-app = Flask(__name__)
+# Initialize Flask app with static folder for frontend
+FRONTEND_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'frontend')
+app = Flask(__name__, static_folder=FRONTEND_DIR, static_url_path='')
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'dev-secret-key-change-in-production')
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
 
@@ -49,7 +50,13 @@ insights_manager = InsightsManager(insights_dir=INSIGHTS_DIR)
 
 @app.route('/')
 def index():
-    """Root endpoint - serve frontend or API info"""
+    """Root endpoint - serve frontend"""
+    return send_from_directory(app.static_folder, 'index.html')
+
+
+@app.route('/api')
+def api_info():
+    """API info endpoint"""
     return jsonify({
         'app': 'UX Transcript Analysis System',
         'version': '1.0.0',
