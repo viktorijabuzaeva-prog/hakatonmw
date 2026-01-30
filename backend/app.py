@@ -151,9 +151,40 @@ def transcripts():
             }), 500
 
 
-@app.route('/api/transcripts/<name>', methods=['GET'])
+@app.route('/api/transcripts/<name>', methods=['GET', 'DELETE'])
 def get_transcript(name):
-    """Get a specific transcript by name"""
+    """Get or delete a specific transcript by name"""
+    
+    if request.method == 'DELETE':
+        try:
+            # Find the file
+            file_path = os.path.join(TRANSCRIPTS_DIR, f"{name}.docx")
+            
+            if not os.path.exists(file_path):
+                # Try URL-decoded name
+                from urllib.parse import unquote
+                decoded_name = unquote(name)
+                file_path = os.path.join(TRANSCRIPTS_DIR, f"{decoded_name}.docx")
+            
+            if os.path.exists(file_path):
+                os.remove(file_path)
+                return jsonify({
+                    'success': True,
+                    'message': f'Transcript "{name}" deleted successfully'
+                })
+            else:
+                return jsonify({
+                    'success': False,
+                    'error': 'Transcript not found'
+                }), 404
+                
+        except Exception as e:
+            return jsonify({
+                'success': False,
+                'error': str(e)
+            }), 500
+    
+    # GET method
     try:
         transcript = transcript_parser.get_transcript_by_name(name)
         

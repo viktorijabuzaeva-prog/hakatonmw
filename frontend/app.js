@@ -243,7 +243,10 @@ function renderTranscriptsList() {
                  onclick="selectTranscript('${transcript.name}')">
                 <div class="transcript-header">
                     <div class="name">${transcript.name}</div>
-                    ${analyzedBadge}
+                    <div class="transcript-actions">
+                        ${analyzedBadge}
+                        <button class="delete-btn" onclick="event.stopPropagation(); deleteTranscript('${transcript.name}')" title="Удалить">🗑</button>
+                    </div>
                 </div>
                 <div class="meta">${formatFileSize(transcript.size)}</div>
                 ${banksHtml}
@@ -294,6 +297,46 @@ function toggleBankFilter(bank) {
 function clearBankFilters() {
     state.activeFilters.clear();
     renderTranscriptsList();
+}
+
+async function deleteTranscript(name) {
+    if (!confirm(`Удалить транскрипт "${name}"?`)) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`${API_BASE_URL}/transcripts/${encodeURIComponent(name)}`, {
+            method: 'DELETE'
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showToast(`Транскрипт "${name}" удалён`, 'success');
+            
+            // Remove from state
+            state.transcripts = state.transcripts.filter(t => t.name !== name);
+            
+            // Clear selection if deleted transcript was selected
+            if (state.selectedTranscript?.name === name) {
+                state.selectedTranscript = null;
+                document.getElementById('transcriptContent').innerHTML = 
+                    '<div class="no-content">Выберите транскрипт для просмотра</div>';
+            }
+            
+            // Remove from cache
+            delete state.analysisCache[name];
+            
+            // Re-render
+            renderTranscriptsList();
+            updateStatistics();
+        } else {
+            showToast('Ошибка: ' + data.error, 'error');
+        }
+    } catch (error) {
+        console.error('Delete error:', error);
+        showToast('Ошибка при удалении: ' + error.message, 'error');
+    }
 }
 
 function updateStatistics() {
