@@ -67,3 +67,6 @@ htmlcov/
 # Distribution
 *.tar.gz
 *.zip
+
+# Transcripts (confidential interview data)
+Transcripts/
