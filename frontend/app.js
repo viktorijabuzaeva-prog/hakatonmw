@@ -727,33 +727,29 @@ async function openInterviewModal(respondentName, quoteToHighlight) {
     const modalBody = document.getElementById('modalBody');
     
     modalTitle.textContent = `Интервью: ${respondentName}`;
-    modalBody.innerHTML = '<div class="loading">Загрузка интервью...</div>';
+    modalBody.innerHTML = '<div class="loading">Загрузка...</div>';
     modal.classList.remove('hidden');
     
     try {
-        // Load transcript content
+        // First try to load transcript content
         const response = await apiCall(`/transcripts/${encodeURIComponent(respondentName)}`);
         
-        if (response.success && response.transcript) {
+        if (response.success && response.transcript && response.transcript.content) {
             let content = response.transcript.content || '';
             
             // Highlight the quote if provided
             if (quoteToHighlight && quoteToHighlight.length > 10) {
-                // Find and highlight the quote
                 const cleanQuote = quoteToHighlight.replace(/[«»"]/g, '').trim();
-                const shortQuote = cleanQuote.substring(0, 50); // Use first 50 chars for matching
+                const shortQuote = cleanQuote.substring(0, 50);
                 
                 if (content.includes(shortQuote)) {
                     content = content.replace(shortQuote, `<mark class="highlight-quote">${shortQuote}</mark>`);
                 }
             }
             
-            // Format content with timecodes highlighted
             content = formatInterviewContent(content);
-            
             modalBody.innerHTML = `<div class="interview-content">${content}</div>`;
             
-            // Scroll to highlighted quote
             setTimeout(() => {
                 const highlight = modalBody.querySelector('.highlight-quote');
                 if (highlight) {
@@ -761,11 +757,58 @@ async function openInterviewModal(respondentName, quoteToHighlight) {
                 }
             }, 100);
         } else {
-            modalBody.innerHTML = '<div class="error">Не удалось загрузить интервью</div>';
+            // Transcript not found - try to show analysis report instead
+            await showReportInModal(respondentName, quoteToHighlight, modalBody);
         }
     } catch (error) {
-        modalBody.innerHTML = `<div class="error">Ошибка: ${error.message}</div>`;
+        // Fallback to report if transcript request fails
+        try {
+            await showReportInModal(respondentName, quoteToHighlight, modalBody);
+        } catch (e) {
+            modalBody.innerHTML = `<div class="error">Транскрипт недоступен. Анализ можно посмотреть в списке слева.</div>`;
+        }
     }
+}
+
+// Show analysis report in modal when transcript is not available
+async function showReportInModal(respondentName, quoteToHighlight, modalBody) {
+    // Check if we have cached analysis
+    const cachedName = respondentName.replace(/-/g, ' ');
+    const cached = state.analysisCache[cachedName] || state.analysisCache[respondentName];
+    
+    if (cached) {
+        let content = `<div class="report-notice">📊 Оригинальный транскрипт недоступен. Показан анализ:</div>`;
+        content += `<div class="interview-content markdown-content">${parseMarkdown(cached)}</div>`;
+        
+        // Highlight quote if provided
+        if (quoteToHighlight && quoteToHighlight.length > 10) {
+            const cleanQuote = quoteToHighlight.replace(/[«»"]/g, '').substring(0, 50);
+            content = content.replace(cleanQuote, `<mark class="highlight-quote">${cleanQuote}</mark>`);
+        }
+        
+        modalBody.innerHTML = content;
+        return;
+    }
+    
+    // Try to load from API
+    const reports = await apiCall('/insights/reports');
+    if (reports.success && reports.reports) {
+        const report = reports.reports.find(r => 
+            r.respondent.replace(/-/g, ' ').toLowerCase() === respondentName.replace(/-/g, ' ').toLowerCase()
+        );
+        
+        if (report) {
+            const reportContent = await apiCall(`/insights/reports/${encodeURIComponent(report.filename)}`);
+            if (reportContent.success && reportContent.content) {
+                let content = `<div class="report-notice">📊 Оригинальный транскрипт недоступен. Показан анализ:</div>`;
+                content += `<div class="interview-content markdown-content">${parseMarkdown(reportContent.content)}</div>`;
+                modalBody.innerHTML = content;
+                return;
+            }
+        }
+    }
+    
+    modalBody.innerHTML = `<div class="error">Транскрипт и анализ недоступны</div>`;
 }
 
 // Format interview content with timecode highlighting

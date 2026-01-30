@@ -1151,6 +1151,16 @@ body {
     50% { background: #facc15; }
 }
 
+.report-notice {
+    background: #dbeafe;
+    border: 1px solid #93c5fd;
+    color: #1e40af;
+    padding: var(--spacing-md);
+    border-radius: var(--radius-md);
+    margin-bottom: var(--spacing-md);
+    font-size: 0.9rem;
+}
+
 .timecode-badge {
     display: inline-block;
     font-size: 0.7rem;
