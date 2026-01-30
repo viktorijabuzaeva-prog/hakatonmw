@@ -205,54 +205,147 @@ async function loadStatistics() {
 function renderTranscriptsList() {
     const container = document.getElementById('transcriptsList');
     
-    if (state.transcripts.length === 0) {
-        container.innerHTML = '<div class="loading">Нет доступных транскриптов</div>';
+    // Build combined list: transcripts + reports without transcripts
+    let items = [];
+    
+    // Add transcripts
+    state.transcripts.forEach(transcript => {
+        items.push({
+            type: 'transcript',
+            name: transcript.name,
+            size: transcript.size,
+            modified: transcript.modified,
+            banks: transcript.banks || [],
+            hasAnalysis: state.analysisCache[transcript.name] !== undefined
+        });
+    });
+    
+    // Add reports that don't have corresponding transcripts
+    Object.keys(state.analysisCache).forEach(reportName => {
+        const hasTranscript = state.transcripts.some(t => t.name === reportName);
+        if (!hasTranscript) {
+            // Extract banks from analysis content
+            const analysis = state.analysisCache[reportName];
+            const banks = extractBanksFromAnalysis(analysis);
+            items.push({
+                type: 'report',
+                name: reportName,
+                size: 0,
+                modified: null,
+                banks: banks,
+                hasAnalysis: true
+            });
+        }
+    });
+    
+    if (items.length === 0) {
+        container.innerHTML = '<div class="loading">Нет доступных транскриптов или отчётов</div>';
         return;
     }
     
     // Collect all unique banks
     state.allBanks = new Set();
-    state.transcripts.forEach(t => {
-        if (t.banks) t.banks.forEach(b => state.allBanks.add(b));
+    items.forEach(item => {
+        if (item.banks) item.banks.forEach(b => state.allBanks.add(b));
     });
     
     // Render bank filters
     renderBankFilters();
     
-    // Filter transcripts based on active filters
-    let filteredTranscripts = state.transcripts;
+    // Filter items based on active filters
+    let filteredItems = items;
     if (state.activeFilters.size > 0) {
-        filteredTranscripts = state.transcripts.filter(t => {
-            if (!t.banks || t.banks.length === 0) return false;
-            return [...state.activeFilters].some(filter => t.banks.includes(filter));
+        filteredItems = items.filter(item => {
+            if (!item.banks || item.banks.length === 0) return false;
+            return [...state.activeFilters].some(filter => item.banks.includes(filter));
         });
     }
     
-    container.innerHTML = filteredTranscripts.map(transcript => {
-        const banksHtml = transcript.banks && transcript.banks.length > 0 
-            ? `<div class="transcript-banks">${transcript.banks.map(bank => `<span class="bank-tag" onclick="event.stopPropagation(); toggleBankFilter('${bank}')">#${bank}</span>`).join(' ')}</div>`
+    container.innerHTML = filteredItems.map(item => {
+        const banksHtml = item.banks && item.banks.length > 0 
+            ? `<div class="transcript-banks">${item.banks.map(bank => `<span class="bank-tag" onclick="event.stopPropagation(); toggleBankFilter('${bank}')">#${bank}</span>`).join(' ')}</div>`
             : '';
         
-        const isAnalyzed = state.analysisCache[transcript.name] !== undefined;
-        const analyzedBadge = isAnalyzed ? '<span class="analyzed-badge">✓</span>' : '';
+        const analyzedBadge = item.hasAnalysis ? '<span class="analyzed-badge">✓</span>' : '';
+        const typeLabel = item.type === 'report' ? '<span class="report-only-badge">📊</span>' : '';
+        const sizeInfo = item.size > 0 ? formatFileSize(item.size) : 'Только отчёт';
         
         return `
-            <div class="transcript-item ${state.selectedTranscript?.name === transcript.name ? 'selected' : ''} ${isAnalyzed ? 'analyzed' : ''}" 
-                 data-name="${transcript.name}"
-                 data-banks="${(transcript.banks || []).join(',')}"
-                 onclick="selectTranscript('${transcript.name}')">
+            <div class="transcript-item ${state.selectedTranscript?.name === item.name ? 'selected' : ''} ${item.hasAnalysis ? 'analyzed' : ''}" 
+                 data-name="${item.name}"
+                 data-type="${item.type}"
+                 data-banks="${(item.banks || []).join(',')}"
+                 onclick="selectItem('${item.name}', '${item.type}')">
                 <div class="transcript-header">
-                    <div class="name">${transcript.name}</div>
+                    <div class="name">${typeLabel} ${item.name}</div>
                     <div class="transcript-actions">
                         ${analyzedBadge}
-                        <button class="delete-btn" onclick="event.stopPropagation(); deleteTranscript('${transcript.name}')" title="Удалить">🗑</button>
+                        ${item.type === 'transcript' ? `<button class="delete-btn" onclick="event.stopPropagation(); deleteTranscript('${item.name}')" title="Удалить">🗑</button>` : ''}
                     </div>
                 </div>
-                <div class="meta">${formatFileSize(transcript.size)}</div>
+                <div class="meta">${sizeInfo}</div>
                 ${banksHtml}
             </div>
         `;
     }).join('');
+}
+
+// Extract bank names from analysis text
+function extractBanksFromAnalysis(analysis) {
+    const banks = [];
+    // Look for "Упомянутые банки" section or hashtags
+    const bankMatches = analysis.match(/#([А-Яа-яЁё\w]+)/g);
+    if (bankMatches) {
+        bankMatches.forEach(match => {
+            const bank = match.replace('#', '');
+            // Filter out common non-bank hashtags
+            if (!['test', 'banking', 'mobile_app', 'security', 'onboarding'].includes(bank.toLowerCase())) {
+                if (!banks.includes(bank)) banks.push(bank);
+            }
+        });
+    }
+    return banks;
+}
+
+// Select item (transcript or report)
+function selectItem(name, type) {
+    if (type === 'transcript') {
+        selectTranscript(name);
+    } else {
+        selectReport(name);
+    }
+}
+
+// Select a report (no transcript available)
+function selectReport(name) {
+    const cachedAnalysis = state.analysisCache[name];
+    
+    if (cachedAnalysis) {
+        // Create a virtual transcript object
+        state.selectedTranscript = {
+            name: name,
+            size: 0,
+            modified: new Date().toISOString()
+        };
+        
+        // Update UI
+        renderTranscriptsList();
+        showAnalysisArea();
+        
+        // Update selected transcript info
+        document.getElementById('selectedTranscriptName').textContent = name;
+        document.getElementById('transcriptWordCount').textContent = 'Только отчёт';
+        document.getElementById('transcriptDate').textContent = '—';
+        
+        // Show cached analysis
+        state.currentAnalysis = cachedAnalysis;
+        state.currentInsights = parseInsightsFromAnalysis(cachedAnalysis);
+        renderAnalysisResult(cachedAnalysis);
+        showAnalyzedState();
+        
+        // Switch to analysis tab
+        switchTab('analysis');
+    }
 }
 
 function renderBankFilters() {
@@ -342,12 +435,14 @@ async function deleteTranscript(name) {
 function updateStatistics() {
     const stats = state.statistics;
     
-    // Total transcripts loaded (actual files in Transcripts folder)
-    const totalFiles = state.transcripts.length || 0;
-    document.getElementById('totalInterviews').textContent = totalFiles;
+    // Total items (transcripts + unique reports)
+    const reportNames = Object.keys(state.analysisCache);
+    const transcriptNames = state.transcripts.map(t => t.name);
+    const uniqueItems = new Set([...transcriptNames, ...reportNames]);
+    document.getElementById('totalInterviews').textContent = uniqueItems.size;
     
-    // Analyzed count (actual reports in Insights/reports folder)
-    document.getElementById('analyzedCount').textContent = stats.report_count || 0;
+    // Analyzed count (reports in cache)
+    document.getElementById('analyzedCount').textContent = reportNames.length || stats.report_count || 0;
 }
 
 

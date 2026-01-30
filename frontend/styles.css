@@ -308,6 +308,11 @@ body {
     color: var(--success-color);
 }
 
+.report-only-badge {
+    font-size: 0.9rem;
+    margin-right: 4px;
+}
+
 .transcript-banks {
     margin-top: var(--spacing-xs);
     display: flex;
