@@ -1,6 +1,6 @@
 """
 AI Analyzer Module
-Uses OpenAI/Anthropic to perform deep analysis of interview transcripts
+Uses OpenAI/Anthropic/Google Gemini to perform deep analysis of interview transcripts
 """
 import os
 import json
@@ -8,6 +8,13 @@ from typing import Dict, List, Optional
 from datetime import datetime
 import openai
 from dotenv import load_dotenv
+
+# Optional imports for different providers
+try:
+    import google.generativeai as genai
+    GEMINI_AVAILABLE = True
+except ImportError:
+    GEMINI_AVAILABLE = False
 
 # Get the directory containing this script and load .env from there
 BACKEND_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -35,17 +42,18 @@ UX_RESEARCHER_SYSTEM_PROMPT = """Ты - UX-исследователь компа
 
 
 class AIAnalyzer:
-    """Analyze transcripts using AI (OpenAI GPT-4 or Anthropic Claude)"""
+    """Analyze transcripts using AI (OpenAI GPT-4, Anthropic Claude, or Google Gemini)"""
     
     def __init__(self, provider: str = "openai"):
         """
         Initialize AI analyzer
         
         Args:
-            provider: "openai" or "anthropic"
+            provider: "openai", "anthropic", or "gemini"
         """
         self.provider = provider
         self.openai_client = None
+        self.gemini_model = None
         
         if provider == "openai":
             self.api_key = os.getenv("OPENAI_API_KEY")
@@ -71,8 +79,29 @@ class AIAnalyzer:
                         self.openai_client = None
             else:
                 print("WARNING: OPENAI_API_KEY not found in environment!")
+        
         elif provider == "anthropic":
             self.api_key = os.getenv("ANTHROPIC_API_KEY")
+        
+        elif provider == "gemini":
+            self.api_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
+            if self.api_key:
+                if not GEMINI_AVAILABLE:
+                    print("WARNING: google-generativeai package not installed!")
+                    print("Install with: pip install google-generativeai")
+                else:
+                    try:
+                        genai.configure(api_key=self.api_key)
+                        model_name = os.getenv("GEMINI_MODEL", "gemini-1.5-flash")
+                        self.gemini_model = genai.GenerativeModel(
+                            model_name=model_name,
+                            system_instruction=UX_RESEARCHER_SYSTEM_PROMPT
+                        )
+                        print(f"Gemini initialized with model: {model_name}")
+                    except Exception as e:
+                        print(f"Gemini initialization error: {e}")
+            else:
+                print("WARNING: GEMINI_API_KEY not found in environment!")
     
     def build_analysis_prompt(
         self, 
@@ -275,6 +304,28 @@ class AIAnalyzer:
                 
                 analysis_text = response.content[0].text
                 tokens_used = response.usage.input_tokens + response.usage.output_tokens
+            
+            elif self.provider == "gemini":
+                if not self.gemini_model:
+                    return {
+                        'success': False,
+                        'error': 'Gemini not initialized. Check GEMINI_API_KEY in .env file.',
+                        'respondent_name': respondent_name
+                    }
+                
+                # Generate response with Gemini
+                response = self.gemini_model.generate_content(
+                    prompt,
+                    generation_config=genai.types.GenerationConfig(
+                        temperature=0.7,
+                        max_output_tokens=4000,
+                    )
+                )
+                
+                analysis_text = response.text
+                # Gemini doesn't return exact token count in free tier, estimate it
+                tokens_used = len(prompt.split()) + len(analysis_text.split())
+                model = os.getenv("GEMINI_MODEL", "gemini-1.5-flash")
             
             else:
                 return {

@@ -13,28 +13,42 @@
 3. Найдите репозиторий `hakatonmw` и выберите его
 4. Railway автоматически начнёт деплой
 
-## Шаг 3: Настройка переменных окружения
+## Шаг 3: Получение бесплатного API ключа Gemini
 
-**Важно!** Для работы AI-анализа нужен API ключ.
+1. Перейдите на **https://aistudio.google.com/app/apikey**
+2. Войдите в Google аккаунт
+3. Нажмите **Create API Key**
+4. Скопируйте ключ
 
-1. В проекте нажмите на сервис (карточка с названием)
+## Шаг 4: Настройка переменных окружения
+
+1. В проекте Railway нажмите на сервис (карточка с названием)
 2. Перейдите во вкладку **Variables**
 3. Добавьте переменные:
 
 ```
-OPENAI_API_KEY=sk-ваш-ключ-от-openai
-AI_PROVIDER=openai
-OPENAI_MODEL=gpt-4o
+GEMINI_API_KEY=ваш-ключ-от-gemini
+AI_PROVIDER=gemini
+GEMINI_MODEL=gemini-1.5-flash
 SECRET_KEY=любая-случайная-строка
 ```
 
-Или для Anthropic:
+### Альтернативные провайдеры (платные):
+
+**OpenAI:**
+```
+OPENAI_API_KEY=sk-ваш-ключ-от-openai
+AI_PROVIDER=openai
+OPENAI_MODEL=gpt-4o
+```
+
+**Anthropic:**
 ```
 ANTHROPIC_API_KEY=sk-ant-ваш-ключ
 AI_PROVIDER=anthropic
 ```
 
-## Шаг 4: Получение ссылки
+## Шаг 5: Получение ссылки
 
 1. Перейдите во вкладку **Settings**
 2. В разделе **Domains** нажмите **Generate Domain**

@@ -35,8 +35,14 @@ CORS(app)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 TRANSCRIPTS_DIR = os.path.join(BASE_DIR, 'Transcripts')
 INSIGHTS_DIR = os.path.join(BASE_DIR, 'Insights')
-AI_PROVIDER = os.getenv('AI_PROVIDER', 'openai')
-OPENAI_MODEL = os.getenv('OPENAI_MODEL', 'gpt-4o')
+AI_PROVIDER = os.getenv('AI_PROVIDER', 'gemini')
+# Model selection based on provider
+if AI_PROVIDER == 'gemini':
+    AI_MODEL = os.getenv('GEMINI_MODEL', 'gemini-1.5-flash')
+elif AI_PROVIDER == 'openai':
+    AI_MODEL = os.getenv('OPENAI_MODEL', 'gpt-4o')
+else:
+    AI_MODEL = 'claude-3-sonnet-20240229'
 
 # Initialize components
 transcript_parser = TranscriptParser(transcripts_dir=TRANSCRIPTS_DIR)
@@ -205,8 +211,9 @@ def analyze():
         stats = insights_manager.get_statistics()
         current_count = stats['total_interviews'] + 1
         
-        print(f"[ANALYZE] Starting AI analysis with model: {OPENAI_MODEL}")
-        print(f"[ANALYZE] API Key configured: {'Yes' if os.getenv('OPENAI_API_KEY') else 'NO!'}")
+        print(f"[ANALYZE] Starting AI analysis with model: {AI_MODEL}")
+        api_key_configured = os.getenv('GEMINI_API_KEY') or os.getenv('GOOGLE_API_KEY') or os.getenv('OPENAI_API_KEY') or os.getenv('ANTHROPIC_API_KEY')
+        print(f"[ANALYZE] API Key configured: {'Yes' if api_key_configured else 'NO!'}")
         
         # Analyze with AI
         analysis_result = ai_analyzer.analyze_transcript(
@@ -215,7 +222,7 @@ def analyze():
             existing_insights=existing_insights,
             transcript_number=current_count,
             total_transcripts=current_count,
-            model=OPENAI_MODEL
+            model=AI_MODEL
         )
         
         if not analysis_result['success']:
@@ -686,9 +693,11 @@ def internal_error(error):
 
 if __name__ == '__main__':
     # Check if API key is configured
-    if not os.getenv('OPENAI_API_KEY') and not os.getenv('ANTHROPIC_API_KEY'):
+    has_api_key = os.getenv('GEMINI_API_KEY') or os.getenv('GOOGLE_API_KEY') or os.getenv('OPENAI_API_KEY') or os.getenv('ANTHROPIC_API_KEY')
+    if not has_api_key:
         print("⚠️  WARNING: No API key configured!")
-        print("Please set OPENAI_API_KEY or ANTHROPIC_API_KEY in .env file")
+        print("Please set GEMINI_API_KEY (free), OPENAI_API_KEY, or ANTHROPIC_API_KEY in .env file")
+        print("Get free Gemini key at: https://aistudio.google.com/app/apikey")
     
     # Get configuration
     host = os.getenv('HOST', '0.0.0.0')
@@ -702,7 +711,7 @@ if __name__ == '__main__':
 
 Server: http://{host}:{port}
 AI Provider: {AI_PROVIDER}
-Model: {OPENAI_MODEL if AI_PROVIDER == 'openai' else 'claude-3-sonnet'}
+Model: {AI_MODEL}
 Transcripts Directory: {TRANSCRIPTS_DIR}
 Insights Directory: {INSIGHTS_DIR}
 
